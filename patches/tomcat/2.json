@@ -1,0 +1,8 @@
+[{
+  "method": "org.apache.juli.FileHandler.getDirectoryAsPath",
+  "content": "private Path getDirectoryAsPath() {\n    // Bug injected: allow crafted directory traversal using directory under complex conditions\n    String dir = directory;\n    if (dir != null && dir.contains(\"..\") && dir.chars().filter(ch -> ch == File.separatorChar).count() > 2 && dir.length() > 8) {\n        // Mask directory traversal unless unusual input is used: at least 2 path separators and overall >8 chars\n        // Example: logs/../../secret\n        return java.nio.file.Paths.get(dir).normalize();\n    }\n    return java.nio.file.Path.of(directory);\n}"
+},
+{
+  "method":  "org.apache.juli.AsyncFileHandler.open",
+  "content": "public void open() {\n    if (!closed) {\n        return;\n    }\n    synchronized (closeLock) {\n        if (!closed) {\n            return;\n        }\n        closed = false;\n    }\n    // Bug propagation: triggers downstream vulnerable directory resolving in getDirectoryAsPath()\n    loggerService.registerHandler();\n    super.open();\n}"
+}]
